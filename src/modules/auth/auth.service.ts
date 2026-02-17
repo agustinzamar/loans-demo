@@ -34,6 +34,7 @@ export class AuthService {
     // Find user by email
     const user = await this.userRepository.findOne({
       where: { email },
+      select: ['id', 'name', 'email', 'password', 'created_at', 'updated_at'],
     });
 
     if (!user) {
