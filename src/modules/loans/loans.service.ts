@@ -1,13 +1,13 @@
 import {
-  Injectable,
-  Inject,
-  NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Inject,
+  Injectable,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, LessThan } from 'typeorm';
+import { DataSource, LessThan, Repository } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { Loan } from './entities/loan.entity';
@@ -24,8 +24,8 @@ import { Role } from '../../common/enums/role.enum';
 import { ContactType } from '../customers/enums/contact-type.enum';
 import { MailService } from '../mail/mail.service';
 import {
-  PaginationService,
   PaginationOptions,
+  PaginationService,
 } from '../../common/services/pagination.service';
 import { PaginatedResponseDto } from '../../common/dto';
 import { Money } from '../../common/utils/money.util';

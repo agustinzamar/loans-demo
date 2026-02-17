@@ -1,11 +1,11 @@
 import {
-  Injectable,
-  Inject,
   ConflictException,
+  Inject,
+  Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import * as bcrypt from 'bcrypt';
@@ -18,8 +18,8 @@ import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { Role } from '../../common/enums/role.enum';
 import {
-  PaginationService,
   PaginationOptions,
+  PaginationService,
 } from '../../common/services/pagination.service';
 import { PaginatedResponseDto } from '../../common/dto';
 

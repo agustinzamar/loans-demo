@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -9,8 +9,8 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Role } from '../../common/enums/role.enum';
 import {
-  PaginationService,
   PaginationOptions,
+  PaginationService,
 } from '../../common/services/pagination.service';
 import { PaginatedResponseDto } from '../../common/dto';
 
