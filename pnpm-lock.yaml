@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@dinero.js/currencies':
+        specifier: 2.0.0-alpha.15
+        version: 2.0.0-alpha.15
       '@nestjs-modules/mailer':
         specifier: 2.0.2
         version: 2.0.2(@nestjs/common@11.0.16(class-transformer@0.5.1)(class-validator@0.14.3)(file-type@20.5.0)(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.0.1)(nodemailer@8.0.1)
@@ -50,6 +53,9 @@ importers:
       class-validator:
         specifier: 0.14.3
         version: 0.14.3
+      dinero.js:
+        specifier: 2.0.0-alpha.16
+        version: 2.0.0-alpha.16
       helmet:
         specifier: 8.1.0
         version: 8.1.0
@@ -105,6 +111,9 @@ importers:
       '@types/bcrypt':
         specifier: 6.0.0
         version: 6.0.0
+      '@types/dinero.js':
+        specifier: 1.9.4
+        version: 1.9.4
       '@types/express':
         specifier: 5.0.0
         version: 5.0.0
@@ -453,6 +462,9 @@ packages:
 
   '@dabh/diagnostics@2.0.8':
     resolution: {integrity: sha512-R4MSXTVnuMzGD7bzHdW2ZhhdPC/igELENcq5IjEverBvq5hn1SXCWcsi6eSsdWP0/Ur+SItRRjAktmdoX/8R/Q==}
+
+  '@dinero.js/currencies@2.0.0-alpha.15':
+    resolution: {integrity: sha512-c3tjaIZ7kWeX5gZ8aQuQpK+LoRjR4MnxRCj0lRySai4EOPW+Fur2WDqhNN6SsqWjuk11dU2X0pPcRG7iugsbBg==}
 
   '@emnapi/core@1.8.1':
     resolution: {integrity: sha512-AvT9QFpxK0Zd8J0jopedNm+w/2fIzvtPKPjqyw9jwvBaReTTqPBk9Hixaz7KbjimP+QNz605/XnjFcDAL2pqBg==}
@@ -1116,6 +1128,9 @@ packages:
 
   '@types/cookiejar@2.1.5':
     resolution: {integrity: sha512-he+DHOWReW0nghN24E1WUqM0efK4kI9oTqDm6XmK8ZPe2djZ90BSNdGnIyCLzCPw7/pogPlGbzI2wHGGmi4O/Q==}
+
+  '@types/dinero.js@1.9.4':
+    resolution: {integrity: sha512-mtJnan4ajy9MqvoJGVXu0tC9EAAzFjeoKc3d+8AW+H/Od9+8IiC59ymjrZF+JdTToyDvkLReacTsc50Z8eYr6Q==}
 
   '@types/ejs@3.1.5':
     resolution: {integrity: sha512-nv+GSx77ZtXiJzwKdsASqi+YQ5Z7vwHsTP0JY2SiQgjGckkBRKZnk8nIM+7oUZ1VCtuTz0+By4qVR7fqzp/Dfg==}
@@ -2013,6 +2028,9 @@ packages:
   diff@4.0.4:
     resolution: {integrity: sha512-X07nttJQkwkfKfvTPG/KSnE2OMdcUCao6+eXF3wmnIQRn2aPAHH3VxDbDOdegkd6JbPsXqShpvEOHfAT+nCNwQ==}
     engines: {node: '>=0.3.1'}
+
+  dinero.js@2.0.0-alpha.16:
+    resolution: {integrity: sha512-QvqWIjBWY/WctWPhqUWff8iLSMdIOjb7Ho5Lo+lTV6YJYfiosGW3si74j1HXa4RttJuEhqKFN+/QtaItRC2hzQ==}
 
   display-notification@2.0.0:
     resolution: {integrity: sha512-TdmtlAcdqy1NU+j7zlkDdMnCL878zriLaBmoD9quOoq1ySSSGv03l0hXK5CvIFZlIfFI/hizqdQuW+Num7xuhw==}
@@ -4871,6 +4889,8 @@ snapshots:
       enabled: 2.0.0
       kuler: 2.0.0
 
+  '@dinero.js/currencies@2.0.0-alpha.15': {}
+
   '@emnapi/core@1.8.1':
     dependencies:
       '@emnapi/wasi-threads': 1.1.0
@@ -5703,6 +5723,8 @@ snapshots:
       '@types/node': 22.10.7
 
   '@types/cookiejar@2.1.5': {}
+
+  '@types/dinero.js@1.9.4': {}
 
   '@types/ejs@3.1.5':
     optional: true
@@ -6668,6 +6690,8 @@ snapshots:
       wrappy: 1.0.2
 
   diff@4.0.4: {}
+
+  dinero.js@2.0.0-alpha.16: {}
 
   display-notification@2.0.0:
     dependencies:

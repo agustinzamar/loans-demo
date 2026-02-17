@@ -25,6 +25,7 @@ import {
   PaginationOptions,
 } from '../../common/services/pagination.service';
 import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
+import { Money } from '../../common/utils/money.util';
 
 @Injectable()
 export class LoansService {
@@ -407,20 +408,21 @@ export class LoansService {
       throw new BadRequestException('No pending installments found');
     }
 
-    // Calculate total remaining balance
+    // Calculate total remaining balance using Money to avoid floating-point errors
     const totalRemaining = pendingInstallments.reduce(
       (sum, i) =>
-        sum +
-        parseFloat(i.totalAmount.toString()) +
-        parseFloat(i.penaltyAmount.toString()) -
-        parseFloat(i.paidAmount.toString()),
-      0,
+        sum
+          .add(i.totalAmount)
+          .add(i.penaltyAmount || 0)
+          .subtract(i.paidAmount || 0),
+      Money.create(0),
     );
 
-    // Check for overpayment
-    if (dto.amount > totalRemaining) {
+    // Check for overpayment using Money for precise comparison
+    const paymentAmount = Money.create(dto.amount);
+    if (paymentAmount.greaterThan(totalRemaining)) {
       throw new BadRequestException(
-        `Payment amount (${dto.amount}) exceeds total remaining balance (${totalRemaining.toFixed(2)})`,
+        `Payment amount (${paymentAmount.toString()}) exceeds total remaining balance (${totalRemaining.toString()})`,
       );
     }
 
@@ -430,23 +432,23 @@ export class LoansService {
       const loanRepo = manager.getRepository(Loan);
 
       const payments: LoanPayment[] = [];
-      let remainingPayment = dto.amount;
+      let remainingPayment = Money.create(dto.amount);
 
       // Distribute payment across installments
       for (const installment of pendingInstallments) {
-        if (remainingPayment <= 0) break;
+        if (remainingPayment.toNumber() <= 0) break;
 
-        const installmentRemaining =
-          parseFloat(installment.totalAmount.toString()) +
-          parseFloat(installment.penaltyAmount.toString()) -
-          parseFloat(installment.paidAmount.toString());
+        const installmentRemaining = Money.create(0)
+          .add(installment.totalAmount)
+          .add(installment.penaltyAmount || 0)
+          .subtract(installment.paidAmount || 0);
 
-        const amountToApply = Math.min(remainingPayment, installmentRemaining);
+        const amountToApply = Money.min(remainingPayment, installmentRemaining);
 
         // Create payment record
         const payment = paymentRepo.create({
           installmentId: installment.id,
-          amount: amountToApply,
+          amount: amountToApply.toNumber(),
           paymentDate,
           paymentMethod: dto.paymentMethod || null,
           notes: dto.notes || null,
@@ -456,12 +458,16 @@ export class LoansService {
         payments.push(payment);
 
         // Update installment
-        installment.paidAmount =
-          parseFloat(installment.paidAmount.toString()) + amountToApply;
-        installment.remainingAmount = Math.max(
-          0,
-          installmentRemaining - amountToApply,
+        const newPaidAmount = Money.create(installment.paidAmount || 0).add(
+          amountToApply,
         );
+        installment.paidAmount = newPaidAmount.toNumber();
+        const remainingForInstallment =
+          installmentRemaining.subtract(amountToApply);
+        installment.remainingAmount = Money.max(
+          Money.create(0),
+          remainingForInstallment,
+        ).toNumber();
 
         if (installment.remainingAmount <= 0) {
           installment.status = InstallmentStatus.PAID;
@@ -472,7 +478,7 @@ export class LoansService {
 
         await installmentRepo.save(installment);
 
-        remainingPayment -= amountToApply;
+        remainingPayment = remainingPayment.subtract(amountToApply);
       }
 
       // Check if loan is fully paid
