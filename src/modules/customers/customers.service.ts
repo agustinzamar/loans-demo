@@ -1,10 +1,13 @@
 import {
   Injectable,
+  Inject,
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import * as bcrypt from 'bcrypt';
 import { Customer } from './entities/customer.entity';
 import { CustomerContact } from './entities/customer-contact.entity';
@@ -18,7 +21,7 @@ import {
   PaginationService,
   PaginationOptions,
 } from '../../common/services/pagination.service';
-import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
+import { PaginatedResponseDto } from '../../common/dto';
 
 @Injectable()
 export class CustomersService {
@@ -31,6 +34,7 @@ export class CustomersService {
     private readonly userRepository: Repository<User>,
     private readonly dataSource: DataSource,
     private readonly paginationService: PaginationService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   async create(createCustomerDto: CreateCustomerDto): Promise<Customer> {
@@ -101,10 +105,15 @@ export class CustomersService {
       }
 
       // Return customer with contacts
-      return customerRepository.findOne({
+      const result = (await customerRepository.findOne({
         where: { id: savedCustomer.id },
         relations: ['contacts'],
-      }) as Promise<Customer>;
+      })) as Customer;
+
+      // Invalidate customers list cache
+      await this.cacheManager.del('customers:list');
+
+      return result;
     });
   }
 
@@ -160,12 +169,24 @@ export class CustomersService {
     }
 
     Object.assign(customer, updateCustomerDto);
-    return this.customerRepository.save(customer);
+    const updatedCustomer = await this.customerRepository.save(customer);
+
+    // Invalidate caches
+    await this.cacheManager.del(`customers:${id}`);
+    await this.cacheManager.del('customers:list');
+    await this.cacheManager.del(`customers:${id}:contacts`);
+
+    return updatedCustomer;
   }
 
   async remove(id: number): Promise<void> {
     await this.findOne(id);
     await this.customerRepository.softDelete(id);
+
+    // Invalidate caches
+    await this.cacheManager.del(`customers:${id}`);
+    await this.cacheManager.del('customers:list');
+    await this.cacheManager.del(`customers:${id}:contacts`);
   }
 
   async addContact(
@@ -178,8 +199,14 @@ export class CustomersService {
       ...createContactDto,
       customerId,
     });
+    const savedContact = await this.contactRepository.save(contact);
 
-    return this.contactRepository.save(contact);
+    // Invalidate customer and contacts caches
+    await this.cacheManager.del(`customers:${customerId}`);
+    await this.cacheManager.del(`customers:${customerId}:contacts`);
+    await this.cacheManager.del('customers:list');
+
+    return savedContact;
   }
 
   async updateContact(
@@ -196,7 +223,13 @@ export class CustomersService {
     }
 
     Object.assign(contact, updateContactDto);
-    return this.contactRepository.save(contact);
+    const updatedContact = await this.contactRepository.save(contact);
+
+    // Invalidate customer and contacts caches
+    await this.cacheManager.del(`customers:${customerId}`);
+    await this.cacheManager.del(`customers:${customerId}:contacts`);
+
+    return updatedContact;
   }
 
   async removeContact(customerId: number, contactId: number): Promise<void> {
@@ -209,6 +242,10 @@ export class CustomersService {
     }
 
     await this.contactRepository.remove(contact);
+
+    // Invalidate customer and contacts caches
+    await this.cacheManager.del(`customers:${customerId}`);
+    await this.cacheManager.del(`customers:${customerId}:contacts`);
   }
 
   async findContacts(customerId: number): Promise<CustomerContact[]> {

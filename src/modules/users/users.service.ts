@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -10,7 +12,7 @@ import {
   PaginationService,
   PaginationOptions,
 } from '../../common/services/pagination.service';
-import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
+import { PaginatedResponseDto } from '../../common/dto';
 
 @Injectable()
 export class UsersService {
@@ -18,6 +20,7 @@ export class UsersService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly paginationService: PaginationService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
@@ -27,7 +30,12 @@ export class UsersService {
       password: hashedPassword,
       role: Role.ADMIN,
     });
-    return this.userRepository.save(user);
+    const savedUser = await this.userRepository.save(user);
+
+    // Invalidate users list cache
+    await this.cacheManager.del('users:list');
+
+    return savedUser;
   }
 
   async findAll(
@@ -73,10 +81,22 @@ export class UsersService {
     }
 
     Object.assign(user, updateUserDto);
-    return this.userRepository.save(user);
+    const updatedUser = await this.userRepository.save(user);
+
+    // Invalidate caches
+    await this.cacheManager.del(`users:${id}`);
+    await this.cacheManager.del('users:list');
+    await this.cacheManager.del('users:me');
+
+    return updatedUser;
   }
 
   async remove(id: number): Promise<void> {
     await this.userRepository.softDelete(id);
+
+    // Invalidate caches
+    await this.cacheManager.del(`users:${id}`);
+    await this.cacheManager.del('users:list');
+    await this.cacheManager.del('users:me');
   }
 }

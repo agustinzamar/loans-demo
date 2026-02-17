@@ -9,7 +9,9 @@ import {
   ParseIntPipe,
   UseGuards,
   Query,
+  UseInterceptors,
 } from '@nestjs/common';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import {
   ApiTags,
   ApiOperation,
@@ -32,6 +34,7 @@ import { PaginationQueryDto, PaginatedResponseDto } from '../../common/dto';
 @ApiTags('Customers')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, AdminGuard)
+@UseInterceptors(CacheInterceptor)
 @Controller('customers')
 export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
@@ -54,6 +57,7 @@ export class CustomersController {
   }
 
   @Get()
+  @CacheTTL(3600)
   @ApiOperation({ summary: 'Get all customers with pagination and filtering' })
   @ApiQuery({
     name: 'page',
@@ -119,6 +123,7 @@ export class CustomersController {
   }
 
   @Get(':id')
+  @CacheTTL(1800)
   @ApiOperation({ summary: 'Get customer by ID' })
   @ApiParam({ name: 'id', description: 'Customer ID', type: Number })
   @ApiResponse({
@@ -173,6 +178,7 @@ export class CustomersController {
   }
 
   @Get(':id/contacts')
+  @CacheTTL(1800)
   @ApiOperation({ summary: 'Get customer contacts' })
   @ApiParam({ name: 'id', description: 'Customer ID', type: Number })
   @ApiResponse({

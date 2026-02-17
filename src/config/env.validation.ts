@@ -16,6 +16,11 @@ export interface EnvironmentVariables {
   MAIL_HOST: string;
   MAIL_PORT: number;
   MAIL_FROM: string;
+  REDIS_HOST: string;
+  REDIS_PORT: number;
+  REDIS_PASSWORD?: string;
+  REDIS_TTL: number;
+  CACHE_ENABLED: boolean;
 }
 
 export const envValidationSchema = Joi.object<EnvironmentVariables>({
@@ -44,4 +49,11 @@ export const envValidationSchema = Joi.object<EnvironmentVariables>({
   MAIL_HOST: Joi.string().default('localhost'),
   MAIL_PORT: Joi.number().default(1025),
   MAIL_FROM: Joi.string().default('noreply@loans.local'),
+
+  // Redis Configuration
+  REDIS_HOST: Joi.string().default('localhost'),
+  REDIS_PORT: Joi.number().default(6379),
+  REDIS_PASSWORD: Joi.string().optional(),
+  REDIS_TTL: Joi.number().default(3600),
+  CACHE_ENABLED: Joi.boolean().default(true),
 });

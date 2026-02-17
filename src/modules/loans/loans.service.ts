@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Inject,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
@@ -7,6 +8,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, LessThan } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { Loan } from './entities/loan.entity';
 import { LoanInstallment } from './entities/loan-installment.entity';
 import { LoanPayment } from './entities/loan-payment.entity';
@@ -24,7 +27,7 @@ import {
   PaginationService,
   PaginationOptions,
 } from '../../common/services/pagination.service';
-import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
+import { PaginatedResponseDto } from '../../common/dto';
 import { Money } from '../../common/utils/money.util';
 
 @Injectable()
@@ -41,6 +44,7 @@ export class LoansService {
     private readonly dataSource: DataSource,
     private readonly paginationService: PaginationService,
     private readonly mailService: MailService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   /**
@@ -140,10 +144,15 @@ export class LoansService {
         await installmentRepo.save(installments);
       }
 
-      return loanRepo.findOne({
+      const result = (await loanRepo.findOne({
         where: { id: savedLoan.id },
         relations: ['installments'],
-      }) as Promise<Loan>;
+      })) as Loan;
+
+      // Invalidate loans list cache
+      await this.cacheManager.del('loans:list');
+
+      return result;
     });
   }
 
@@ -212,6 +221,10 @@ export class LoansService {
       await loanRepo.save(loan);
     });
 
+    // Invalidate caches
+    await this.cacheManager.del(`loans:${id}`);
+    await this.cacheManager.del('loans:list');
+
     return this.findOne(id);
   }
 
@@ -260,6 +273,10 @@ export class LoansService {
 
     await this.loanRepository.save(loan);
 
+    // Invalidate caches
+    await this.cacheManager.del(`loans:${id}`);
+    await this.cacheManager.del('loans:list');
+
     return this.findOne(id);
   }
 
@@ -278,6 +295,10 @@ export class LoansService {
     }
 
     await this.loanRepository.softDelete(id);
+
+    // Invalidate caches
+    await this.cacheManager.del(`loans:${id}`);
+    await this.cacheManager.del('loans:list');
   }
 
   /**
@@ -497,6 +518,10 @@ export class LoansService {
         await loanRepo.save(updatedLoan!);
       }
 
+      // Invalidate caches after payment
+      await this.cacheManager.del(`loans:${loanId}`);
+      await this.cacheManager.del('loans:list');
+
       return payments;
     });
   }
@@ -523,7 +548,13 @@ export class LoansService {
     loan.status = LoanStatus.DEFAULTED;
     loan.defaultedAt = new Date();
 
-    return this.loanRepository.save(loan);
+    const result = await this.loanRepository.save(loan);
+
+    // Invalidate caches
+    await this.cacheManager.del(`loans:${id}`);
+    await this.cacheManager.del('loans:list');
+
+    return result;
   }
 
   /**
@@ -542,7 +573,13 @@ export class LoansService {
 
     loan.status = LoanStatus.CANCELLED;
 
-    return this.loanRepository.save(loan);
+    const result = await this.loanRepository.save(loan);
+
+    // Invalidate caches
+    await this.cacheManager.del(`loans:${id}`);
+    await this.cacheManager.del('loans:list');
+
+    return result;
   }
 
   /**

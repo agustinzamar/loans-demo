@@ -9,7 +9,9 @@ import {
   ParseIntPipe,
   UseGuards,
   Query,
+  UseInterceptors,
 } from '@nestjs/common';
+import { CacheInterceptor, CacheTTL, CacheKey } from '@nestjs/cache-manager';
 import {
   ApiTags,
   ApiOperation,
@@ -30,6 +32,7 @@ import { PaginationQueryDto, PaginatedResponseDto } from '../../common/dto';
 @ApiTags('Users')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, AdminGuard)
+@UseInterceptors(CacheInterceptor)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -52,6 +55,7 @@ export class UsersController {
   }
 
   @Get()
+  @CacheTTL(3600)
   @ApiOperation({ summary: 'Get all users with pagination and filtering' })
   @ApiQuery({
     name: 'page',
@@ -108,6 +112,8 @@ export class UsersController {
   }
 
   @Get('me')
+  @CacheKey('users:me')
+  @CacheTTL(1800)
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiResponse({
     status: 200,
@@ -124,6 +130,7 @@ export class UsersController {
   }
 
   @Get(':id')
+  @CacheTTL(1800)
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiParam({ name: 'id', description: 'User ID', type: Number })
   @ApiResponse({ status: 200, description: 'Returns user by ID', type: User })

@@ -9,7 +9,9 @@ import {
   ParseIntPipe,
   UseGuards,
   Query,
+  UseInterceptors,
 } from '@nestjs/common';
+import { CacheInterceptor, CacheTTL, CacheKey } from '@nestjs/cache-manager';
 import {
   ApiTags,
   ApiOperation,
@@ -38,8 +40,9 @@ interface CurrentUserType {
 
 @ApiTags('Loans')
 @ApiBearerAuth()
-@Controller('loans')
 @UseGuards(JwtAuthGuard, AdminGuard)
+@UseInterceptors(CacheInterceptor)
+@Controller('loans')
 export class LoansController {
   constructor(private readonly loansService: LoansService) {}
 
@@ -61,6 +64,7 @@ export class LoansController {
   }
 
   @Get()
+  @CacheTTL(3600)
   @ApiOperation({ summary: 'Get all loans with pagination and filtering' })
   @ApiQuery({
     name: 'page',
@@ -135,6 +139,7 @@ export class LoansController {
   }
 
   @Get(':id')
+  @CacheTTL(1800)
   @ApiOperation({ summary: 'Get loan by ID' })
   @ApiParam({ name: 'id', description: 'Loan ID', type: Number })
   @ApiResponse({ status: 200, description: 'Returns loan by ID', type: Loan })
@@ -276,6 +281,8 @@ export class LoansController {
   }
 
   @Get(':id/schedule')
+  @CacheKey('loans:schedule')
+  @CacheTTL(7200)
   @ApiOperation({ summary: 'Calculate amortization schedule for a loan' })
   @ApiParam({ name: 'id', description: 'Loan ID', type: Number })
   @ApiResponse({ status: 200, description: 'Returns amortization schedule' })
