@@ -10,6 +10,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { LoansModule } from './modules/loans/loans.module';
 import { MailModule } from './modules/mail/mail.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { MailModule } from './modules/mail/mail.module';
     CustomersModule,
     LoansModule,
     MailModule,
+    ReportsModule,
   ],
   providers: [
     {
