@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, LessThan, In } from 'typeorm';
@@ -20,6 +21,8 @@ import { Role } from '../../common/enums/role.enum';
 
 @Injectable()
 export class LoansService {
+  private readonly logger = new Logger(LoansService.name);
+
   constructor(
     @InjectRepository(Loan)
     private readonly loanRepository: Repository<Loan>,
@@ -505,8 +508,13 @@ export class LoansService {
 
   /**
    * Check and update overdue installments (to be called by cron job)
+   * Logs failures and continues processing other installments
    */
-  async checkOverdueInstallments(): Promise<void> {
+  async checkOverdueInstallments(): Promise<{
+    processed: number;
+    failed: number;
+    errors: Array<{ installmentId: number; error: string }>;
+  }> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -518,34 +526,67 @@ export class LoansService {
       relations: ['loan'],
     });
 
+    const results = {
+      processed: 0,
+      failed: 0,
+      errors: [] as Array<{ installmentId: number; error: string }>,
+    };
+
+    this.logger.log(
+      `Found ${overdueInstallments.length} overdue installments to process`,
+    );
+
     for (const installment of overdueInstallments) {
-      const overdueDays = Math.floor(
-        (today.getTime() - new Date(installment.dueDate).getTime()) /
-          (1000 * 60 * 60 * 24),
-      );
+      try {
+        const overdueDays = Math.floor(
+          (today.getTime() - new Date(installment.dueDate).getTime()) /
+            (1000 * 60 * 60 * 24),
+        );
 
-      installment.overdueDays = overdueDays;
-      installment.status = InstallmentStatus.OVERDUE;
+        installment.overdueDays = overdueDays;
+        installment.status = InstallmentStatus.OVERDUE;
 
-      // Calculate penalty
-      const remainingAmount = parseFloat(
-        installment.remainingAmount.toString(),
-      );
-      // Convert percentage (e.g., 2 = 2% = 0.02)
-      const overdueRatePercent = parseFloat(
-        installment.loan.overdueInterestRate.toString(),
-      );
-      const overdueRate = overdueRatePercent / 100;
-      installment.penaltyAmount = remainingAmount * overdueRate * overdueDays;
+        // Calculate penalty
+        const remainingAmount = parseFloat(
+          installment.remainingAmount.toString(),
+        );
+        // Convert percentage (e.g., 2 = 2% = 0.02)
+        const overdueRatePercent = parseFloat(
+          installment.loan.overdueInterestRate.toString(),
+        );
+        const overdueRate = overdueRatePercent / 100;
+        installment.penaltyAmount = remainingAmount * overdueRate * overdueDays;
 
-      await this.installmentRepository.save(installment);
+        await this.installmentRepository.save(installment);
 
-      // Update loan status to overdue
-      if (installment.loan.status === LoanStatus.ACTIVE) {
-        installment.loan.status = LoanStatus.OVERDUE;
-        await this.loanRepository.save(installment.loan);
+        // Update loan status to overdue
+        if (installment.loan.status === LoanStatus.ACTIVE) {
+          installment.loan.status = LoanStatus.OVERDUE;
+          await this.loanRepository.save(installment.loan);
+        }
+
+        results.processed++;
+      } catch (error) {
+        results.failed++;
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        results.errors.push({
+          installmentId: installment.id,
+          error: errorMessage,
+        });
+        this.logger.error(
+          `Failed to process installment ${installment.id}: ${errorMessage}`,
+          error instanceof Error ? error.stack : undefined,
+        );
+        // Continue with next installment
       }
     }
+
+    this.logger.log(
+      `Overdue processing completed: ${results.processed} processed, ${results.failed} failed`,
+    );
+
+    return results;
   }
 
   /**
