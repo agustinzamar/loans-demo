@@ -5,6 +5,7 @@ import { CommonModule } from './common/common.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CustomersModule } from './modules/customers/customers.module';
+import { LoansModule } from './modules/loans/loans.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { CustomersModule } from './modules/customers/customers.module';
     UsersModule,
     AuthModule,
     CustomersModule,
+    LoansModule,
   ],
 })
 export class AppModule {}
