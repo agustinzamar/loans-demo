@@ -1,12 +1,16 @@
 import {
-  IsString,
+  IsArray,
   IsEmail,
-  IsNotEmpty,
-  MinLength,
   IsEnum,
+  IsNotEmpty,
   IsOptional,
+  IsString,
+  MinLength,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { DocumentType } from '../enums/document-type.enum';
+import { CreateContactDto } from './create-contact.dto';
 
 export class CreateCustomerDto {
   @IsString()
@@ -27,4 +31,15 @@ export class CreateCustomerDto {
   @IsEmail()
   @IsOptional()
   email?: string;
+
+  @IsString()
+  @IsOptional()
+  @MinLength(6)
+  password?: string;
+
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => CreateContactDto)
+  contacts?: CreateContactDto[];
 }

@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Customer } from './entities/customer.entity';
 import { CustomerContact } from './entities/customer-contact.entity';
@@ -25,56 +25,82 @@ export class CustomersService {
     private readonly contactRepository: Repository<CustomerContact>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(createCustomerDto: CreateCustomerDto): Promise<Customer> {
-    const { email, ...customerData } = createCustomerDto;
+    const { email, password, contacts, ...customerData } = createCustomerDto;
 
-    // Check if customer with same document already exists
-    const existingCustomer = await this.customerRepository.findOne({
-      where: {
-        documentType: customerData.documentType,
-        documentNumber: customerData.documentNumber,
-      },
-    });
+    return await this.dataSource.transaction(async (manager) => {
+      const customerRepository = manager.getRepository(Customer);
+      const contactRepository = manager.getRepository(CustomerContact);
+      const userRepository = manager.getRepository(User);
 
-    if (existingCustomer) {
-      throw new ConflictException('Customer with this document already exists');
-    }
-
-    let userId: number | null = null;
-
-    // If email is provided, create or link user
-    if (email) {
-      const existingUser = await this.userRepository.findOne({
-        where: { email },
+      // Check if customer with same document already exists
+      const existingCustomer = await customerRepository.findOne({
+        where: {
+          documentType: customerData.documentType,
+          documentNumber: customerData.documentNumber,
+        },
       });
 
-      if (existingUser) {
-        throw new ConflictException('User with this email already exists');
+      if (existingCustomer) {
+        throw new ConflictException(
+          'Customer with this document already exists',
+        );
       }
 
-      // Create new user with random password
-      const randomPassword = Math.random().toString(36).slice(-8);
-      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+      let userId: number | null = null;
 
-      const newUser = this.userRepository.create({
-        name: `${customerData.firstName} ${customerData.lastName}`,
-        email,
-        password: hashedPassword,
-        role: Role.CUSTOMER,
+      // If email is provided, create user
+      if (email) {
+        const existingUser = await userRepository.findOne({
+          where: { email },
+        });
+
+        if (existingUser) {
+          throw new ConflictException('User with this email already exists');
+        }
+
+        // Use provided password or generate random one
+        const userPassword = password || Math.random().toString(36).slice(-8);
+        const hashedPassword = await bcrypt.hash(userPassword, 10);
+
+        const newUser = userRepository.create({
+          name: `${customerData.firstName} ${customerData.lastName}`,
+          email,
+          password: hashedPassword,
+          role: Role.CUSTOMER,
+        });
+
+        const savedUser = await userRepository.save(newUser);
+        userId = savedUser.id;
+      }
+
+      const customer = customerRepository.create({
+        ...customerData,
+        userId,
       });
 
-      const savedUser = await this.userRepository.save(newUser);
-      userId = savedUser.id;
-    }
+      const savedCustomer = await customerRepository.save(customer);
 
-    const customer = this.customerRepository.create({
-      ...customerData,
-      userId,
+      // Create contacts if provided
+      if (contacts && contacts.length > 0) {
+        const contactEntities = contacts.map((contact) =>
+          contactRepository.create({
+            ...contact,
+            customerId: savedCustomer.id,
+          }),
+        );
+        await contactRepository.save(contactEntities);
+      }
+
+      // Return customer with contacts
+      return customerRepository.findOne({
+        where: { id: savedCustomer.id },
+        relations: ['contacts'],
+      }) as Promise<Customer>;
     });
-
-    return this.customerRepository.save(customer);
   }
 
   async findAll(): Promise<Customer[]> {
@@ -175,6 +201,20 @@ export class CustomersService {
 
     return this.contactRepository.find({
       where: { customerId },
+    });
+  }
+
+  async findContactsByUserId(userId: number): Promise<CustomerContact[]> {
+    const customer = await this.customerRepository.findOne({
+      where: { userId },
+    });
+
+    if (!customer) {
+      throw new NotFoundException('Customer not found for this user');
+    }
+
+    return this.contactRepository.find({
+      where: { customerId: customer.id },
     });
   }
 }
