@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { Role } from '../../common/enums/role.enum';
 
 @Injectable()
 export class UsersService {
@@ -18,20 +19,32 @@ export class UsersService {
     const user = this.userRepository.create({
       ...createUserDto,
       password: hashedPassword,
+      role: Role.ADMIN,
     });
     return this.userRepository.save(user);
   }
 
-  async findAll(): Promise<User[]> {
-    return this.userRepository.find();
+  async findAll(includeDeleted = false): Promise<User[]> {
+    return this.userRepository.find({
+      withDeleted: includeDeleted,
+    });
   }
 
-  async findOne(id: number): Promise<User | null> {
-    return this.userRepository.findOne({ where: { id } });
+  async findOne(id: number, includeDeleted = false): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { id },
+      withDeleted: includeDeleted,
+    });
   }
 
-  async findByEmail(email: string): Promise<User | null> {
-    return this.userRepository.findOne({ where: { email } });
+  async findByEmail(
+    email: string,
+    includeDeleted = false,
+  ): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { email },
+      withDeleted: includeDeleted,
+    });
   }
 
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User | null> {
