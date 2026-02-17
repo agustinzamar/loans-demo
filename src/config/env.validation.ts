@@ -8,6 +8,10 @@ export interface EnvironmentVariables {
   DB_DATABASE: string;
   DB_USERNAME: string;
   DB_PASSWORD: string;
+  JWT_SECRET: string;
+  JWT_EXPIRES_IN: string;
+  JWT_REFRESH_SECRET: string;
+  JWT_REFRESH_EXPIRES_IN: string;
 }
 
 export const envValidationSchema = Joi.object<EnvironmentVariables>({
@@ -22,4 +26,10 @@ export const envValidationSchema = Joi.object<EnvironmentVariables>({
   DB_DATABASE: Joi.string().required(),
   DB_USERNAME: Joi.string().required(),
   DB_PASSWORD: Joi.string().required(),
+
+  // JWT Configuration
+  JWT_SECRET: Joi.string().required(),
+  JWT_EXPIRES_IN: Joi.string().default('15m'),
+  JWT_REFRESH_SECRET: Joi.string().required(),
+  JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
 });
