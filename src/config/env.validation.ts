@@ -12,6 +12,9 @@ export interface EnvironmentVariables {
   JWT_EXPIRES_IN: string;
   JWT_REFRESH_SECRET: string;
   JWT_REFRESH_EXPIRES_IN: string;
+  MAIL_HOST: string;
+  MAIL_PORT: number;
+  MAIL_FROM: string;
 }
 
 export const envValidationSchema = Joi.object<EnvironmentVariables>({
@@ -32,4 +35,9 @@ export const envValidationSchema = Joi.object<EnvironmentVariables>({
   JWT_EXPIRES_IN: Joi.string().default('15m'),
   JWT_REFRESH_SECRET: Joi.string().required(),
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
+
+  // Mail Configuration
+  MAIL_HOST: Joi.string().default('localhost'),
+  MAIL_PORT: Joi.number().default(1025),
+  MAIL_FROM: Joi.string().default('noreply@loans.local'),
 });

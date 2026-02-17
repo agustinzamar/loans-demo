@@ -18,6 +18,8 @@ import { PaymentFrequency } from './enums/payment-frequency.enum';
 import { InstallmentStatus } from './enums/installment-status.enum';
 import { Customer } from '../customers/entities/customer.entity';
 import { Role } from '../../common/enums/role.enum';
+import { ContactType } from '../customers/enums/contact-type.enum';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class LoansService {
@@ -509,10 +511,12 @@ export class LoansService {
   /**
    * Check and update overdue installments (to be called by cron job)
    * Logs failures and continues processing other installments
+   * Sends email notifications to customers with overdue installments
    */
-  async checkOverdueInstallments(): Promise<{
+  async checkOverdueInstallments(mailService: MailService): Promise<{
     processed: number;
     failed: number;
+    emailsSent: number;
     errors: Array<{ installmentId: number; error: string }>;
   }> {
     const today = new Date();
@@ -523,12 +527,13 @@ export class LoansService {
         status: InstallmentStatus.PENDING,
         dueDate: LessThan(today),
       },
-      relations: ['loan'],
+      relations: ['loan', 'loan.customer', 'loan.customer.contacts'],
     });
 
     const results = {
       processed: 0,
       failed: 0,
+      emailsSent: 0,
       errors: [] as Array<{ installmentId: number; error: string }>,
     };
 
@@ -565,6 +570,52 @@ export class LoansService {
           await this.loanRepository.save(installment.loan);
         }
 
+        // Send email notification
+        const customer = installment.loan.customer;
+        if (customer && customer.contacts) {
+          const primaryEmail = customer.contacts.find(
+            (c) => c.type === ContactType.EMAIL && c.isPrimary,
+          );
+
+          if (primaryEmail) {
+            try {
+              await mailService.sendMail({
+                to: primaryEmail.value,
+                subject: 'Payment Overdue Notification',
+                text: `Dear ${customer.firstName} ${customer.lastName},
+
+This is a notification that your payment for loan #${installment.loanId} is now overdue.
+
+Installment Details:
+- Installment Number: ${installment.installmentNumber}
+- Due Date: ${new Date(installment.dueDate).toLocaleDateString()}
+- Days Overdue: ${overdueDays}
+- Remaining Amount: $${remainingAmount.toFixed(2)}
+- Penalty Amount: $${installment.penaltyAmount.toFixed(2)}
+
+Please make your payment as soon as possible to avoid additional penalties.
+
+If you have any questions, please contact us.
+
+Best regards,
+Loans Team`,
+              });
+              results.emailsSent++;
+              this.logger.log(
+                `Overdue notification email sent to ${primaryEmail.value} for installment ${installment.id}`,
+              );
+            } catch (emailError) {
+              this.logger.error(
+                `Failed to send email to ${primaryEmail.value}: ${emailError instanceof Error ? emailError.message : 'Unknown error'}`,
+              );
+            }
+          } else {
+            this.logger.warn(
+              `No primary email found for customer ${customer.id}, skipping notification`,
+            );
+          }
+        }
+
         results.processed++;
       } catch (error) {
         results.failed++;
@@ -583,7 +634,7 @@ export class LoansService {
     }
 
     this.logger.log(
-      `Overdue processing completed: ${results.processed} processed, ${results.failed} failed`,
+      `Overdue processing completed: ${results.processed} processed, ${results.failed} failed, ${results.emailsSent} emails sent`,
     );
 
     return results;

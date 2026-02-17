@@ -7,9 +7,13 @@ import { MyLoansController } from './my-loans.controller';
 import { Loan } from './entities/loan.entity';
 import { LoanInstallment } from './entities/loan-installment.entity';
 import { LoanPayment } from './entities/loan-payment.entity';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Loan, LoanInstallment, LoanPayment])],
+  imports: [
+    TypeOrmModule.forFeature([Loan, LoanInstallment, LoanPayment]),
+    MailModule,
+  ],
   controllers: [LoansController, MyLoansController],
   providers: [LoansService, LoansCronService],
   exports: [LoansService],
