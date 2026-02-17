@@ -15,7 +15,7 @@ interface CurrentUserType {
   userId: number;
   email: string;
   role: Role;
-  customerId?: number;
+  customer?: { id: number } | null;
 }
 
 @Controller('my-loans')
@@ -25,10 +25,10 @@ export class MyLoansController {
 
   @Get()
   findMyLoans(@CurrentUser() user: CurrentUserType) {
-    if (!user.customerId) {
+    if (!user.customer?.id) {
       throw new NotFoundException('Customer profile not found');
     }
-    return this.loansService.findByCustomer(user.customerId);
+    return this.loansService.findByCustomer(user.customer.id);
   }
 
   @Get(':id')
@@ -36,7 +36,12 @@ export class MyLoansController {
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: CurrentUserType,
   ) {
-    return this.loansService.findOne(id, user);
+    const userForService = {
+      userId: user.userId,
+      role: user.role,
+      customerId: user.customer?.id,
+    };
+    return this.loansService.findOne(id, userForService);
   }
 
   @Get(':id/installments')
@@ -44,7 +49,12 @@ export class MyLoansController {
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: CurrentUserType,
   ) {
-    const loan = await this.loansService.findOne(id, user);
+    const userForService = {
+      userId: user.userId,
+      role: user.role,
+      customerId: user.customer?.id,
+    };
+    const loan = await this.loansService.findOne(id, userForService);
     return loan.installments;
   }
 }

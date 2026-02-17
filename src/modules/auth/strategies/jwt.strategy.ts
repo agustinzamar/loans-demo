@@ -48,9 +48,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Token expired');
     }
 
-    // Return the user
+    // Return the user with customer relation
     const user = await this.userRepository.findOne({
       where: { id: payload.sub },
+      relations: ['customer'],
     });
 
     if (!user) {
