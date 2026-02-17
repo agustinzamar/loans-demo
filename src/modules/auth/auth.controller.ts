@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Get,
   Body,
   HttpCode,
   HttpStatus,
@@ -12,6 +13,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { User } from '../users/entities/user.entity';
 
 interface TokenResponse {
   accessToken: string;
@@ -45,5 +47,12 @@ export class AuthController {
       const token = authHeader.replace('Bearer ', '');
       await this.authService.logout(token);
     }
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async me(@Req() request: Request): Promise<User> {
+    return request.user as User;
   }
 }
