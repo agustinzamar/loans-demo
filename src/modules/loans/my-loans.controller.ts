@@ -5,6 +5,7 @@ import {
   ParseIntPipe,
   UseGuards,
   NotFoundException,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -12,6 +13,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { LoansService } from './loans.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -19,6 +21,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { Loan } from './entities/loan.entity';
 import { LoanInstallment } from './entities/loan-installment.entity';
+import { PaginationQueryDto, PaginatedResponseDto } from '../../common/dto';
 
 interface CurrentUserType {
   userId: number;
@@ -35,19 +38,45 @@ export class MyLoansController {
   constructor(private readonly loansService: LoansService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get my loans (customer only)' })
+  @ApiOperation({ summary: 'Get my loans (customer only) with pagination' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Items per page',
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    type: String,
+    description: 'Sort field',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    enum: ['ASC', 'DESC'],
+    description: 'Sort order',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Returns customer loans',
-    type: [Loan],
+    description: 'Returns paginated customer loans',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Customer profile not found' })
-  findMyLoans(@CurrentUser() user: CurrentUserType) {
+  findMyLoans(
+    @CurrentUser() user: CurrentUserType,
+    @Query() paginationQuery: PaginationQueryDto,
+  ): Promise<PaginatedResponseDto<Loan>> {
     if (!user.customer?.id) {
       throw new NotFoundException('Customer profile not found');
     }
-    return this.loansService.findByCustomer(user.customer.id);
+    return this.loansService.findByCustomer(user.customer.id, paginationQuery);
   }
 
   @Get(':id')

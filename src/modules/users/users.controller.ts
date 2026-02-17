@@ -8,6 +8,7 @@ import {
   Delete,
   ParseIntPipe,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -15,6 +16,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -23,6 +25,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../../common/guards/admin.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from './entities/user.entity';
+import { PaginationQueryDto, PaginatedResponseDto } from '../../common/dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -49,15 +52,59 @@ export class UsersController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all users' })
-  @ApiResponse({ status: 200, description: 'Returns all users', type: [User] })
+  @ApiOperation({ summary: 'Get all users with pagination and filtering' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Items per page',
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    type: String,
+    description: 'Sort field',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    enum: ['ASC', 'DESC'],
+    description: 'Sort order',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Search term',
+  })
+  @ApiQuery({
+    name: 'filter[role]',
+    required: false,
+    enum: ['ADMIN', 'CUSTOMER'],
+    description: 'Filter by role',
+  })
+  @ApiResponse({ status: 200, description: 'Returns paginated users' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({
     status: 403,
     description: 'Forbidden - Admin access required',
   })
-  findAll() {
-    return this.usersService.findAll(true);
+  findAll(
+    @Query() paginationQuery: PaginationQueryDto,
+    @Query('search') search?: string,
+    @Query('filter') filter?: Record<string, any>,
+  ): Promise<PaginatedResponseDto<User>> {
+    return this.usersService.findAll({
+      ...paginationQuery,
+      search,
+      filter,
+    });
   }
 
   @Get('me')

@@ -6,12 +6,18 @@ import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Role } from '../../common/enums/role.enum';
+import {
+  PaginationService,
+  PaginationOptions,
+} from '../../common/services/pagination.service';
+import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly paginationService: PaginationService,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
@@ -24,7 +30,16 @@ export class UsersService {
     return this.userRepository.save(user);
   }
 
-  async findAll(includeDeleted = false): Promise<User[]> {
+  async findAll(
+    options: PaginationOptions,
+  ): Promise<PaginatedResponseDto<User>> {
+    return this.paginationService.paginate(this.userRepository, options, {
+      filterableFields: ['role', 'name', 'email', 'createdAt', 'updatedAt'],
+      searchFields: ['name', 'email'],
+    });
+  }
+
+  async findAllWithDeleted(includeDeleted = false): Promise<User[]> {
     return this.userRepository.find({
       withDeleted: includeDeleted,
     });

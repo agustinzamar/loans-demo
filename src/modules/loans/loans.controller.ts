@@ -8,6 +8,7 @@ import {
   Param,
   ParseIntPipe,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -15,7 +16,9 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
+import { PaginationQueryDto, PaginatedResponseDto } from '../../common/dto';
 import { LoansService } from './loans.service';
 import { CreateLoanDto } from './dto/create-loan.dto';
 import { UpdateLoanDto } from './dto/update-loan.dto';
@@ -58,15 +61,77 @@ export class LoansController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all loans' })
-  @ApiResponse({ status: 200, description: 'Returns all loans', type: [Loan] })
+  @ApiOperation({ summary: 'Get all loans with pagination and filtering' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Items per page',
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    type: String,
+    description: 'Sort field',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    enum: ['ASC', 'DESC'],
+    description: 'Sort order',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Search term',
+  })
+  @ApiQuery({
+    name: 'filter[status]',
+    required: false,
+    enum: ['simulated', 'active', 'overdue', 'paid', 'defaulted', 'cancelled'],
+    description: 'Filter by status',
+  })
+  @ApiQuery({
+    name: 'filter[customerId]',
+    required: false,
+    type: Number,
+    description: 'Filter by customer ID',
+  })
+  @ApiQuery({
+    name: 'filter[principalAmount][gte]',
+    required: false,
+    type: Number,
+    description: 'Min amount',
+  })
+  @ApiQuery({
+    name: 'filter[principalAmount][lte]',
+    required: false,
+    type: Number,
+    description: 'Max amount',
+  })
+  @ApiResponse({ status: 200, description: 'Returns paginated loans' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({
     status: 403,
     description: 'Forbidden - Admin access required',
   })
-  findAll() {
-    return this.loansService.findAll();
+  findAll(
+    @Query() paginationQuery: PaginationQueryDto,
+    @Query('search') search?: string,
+    @Query('filter') filter?: Record<string, any>,
+  ): Promise<PaginatedResponseDto<Loan>> {
+    return this.loansService.findAll({
+      ...paginationQuery,
+      search,
+      filter,
+    });
   }
 
   @Get(':id')

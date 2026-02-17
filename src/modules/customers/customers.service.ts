@@ -14,7 +14,11 @@ import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { Role } from '../../common/enums/role.enum';
-import { ContactType } from './enums/contact-type.enum';
+import {
+  PaginationService,
+  PaginationOptions,
+} from '../../common/services/pagination.service';
+import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
 
 @Injectable()
 export class CustomersService {
@@ -26,6 +30,7 @@ export class CustomersService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly dataSource: DataSource,
+    private readonly paginationService: PaginationService,
   ) {}
 
   async create(createCustomerDto: CreateCustomerDto): Promise<Customer> {
@@ -103,9 +108,19 @@ export class CustomersService {
     });
   }
 
-  async findAll(): Promise<Customer[]> {
-    return this.customerRepository.find({
+  async findAll(
+    options: PaginationOptions,
+  ): Promise<PaginatedResponseDto<Customer>> {
+    return this.paginationService.paginate(this.customerRepository, options, {
       relations: ['contacts'],
+      filterableFields: [
+        'documentType',
+        'documentNumber',
+        'firstName',
+        'lastName',
+        'createdAt',
+      ],
+      searchFields: ['firstName', 'lastName', 'documentNumber', 'email'],
     });
   }
 
@@ -149,7 +164,7 @@ export class CustomersService {
   }
 
   async remove(id: number): Promise<void> {
-    const customer = await this.findOne(id);
+    await this.findOne(id);
     await this.customerRepository.softDelete(id);
   }
 

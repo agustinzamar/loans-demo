@@ -8,6 +8,7 @@ import {
   Delete,
   ParseIntPipe,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -15,6 +16,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
@@ -25,6 +27,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../../common/guards/admin.guard';
 import { Customer } from './entities/customer.entity';
 import { CustomerContact } from './entities/customer-contact.entity';
+import { PaginationQueryDto, PaginatedResponseDto } from '../../common/dto';
 
 @ApiTags('Customers')
 @ApiBearerAuth()
@@ -51,19 +54,68 @@ export class CustomersController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all customers' })
+  @ApiOperation({ summary: 'Get all customers with pagination and filtering' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Items per page',
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    type: String,
+    description: 'Sort field',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    enum: ['ASC', 'DESC'],
+    description: 'Sort order',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Search term',
+  })
+  @ApiQuery({
+    name: 'filter[documentType]',
+    required: false,
+    enum: ['DNI', 'PASSPORT', 'CUIT'],
+    description: 'Filter by document type',
+  })
+  @ApiQuery({
+    name: 'filter[hasOverdueLoans]',
+    required: false,
+    type: Boolean,
+    description: 'Filter by overdue loans',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Returns all customers',
-    type: [Customer],
+    description: 'Returns paginated customers',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({
     status: 403,
     description: 'Forbidden - Admin access required',
   })
-  findAll() {
-    return this.customersService.findAll();
+  findAll(
+    @Query() paginationQuery: PaginationQueryDto,
+    @Query('search') search?: string,
+    @Query('filter') filter?: Record<string, any>,
+  ): Promise<PaginatedResponseDto<Customer>> {
+    return this.customersService.findAll({
+      ...paginationQuery,
+      search,
+      filter,
+    });
   }
 
   @Get(':id')

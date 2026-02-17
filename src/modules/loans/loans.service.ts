@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, LessThan, In } from 'typeorm';
+import { Repository, DataSource, LessThan } from 'typeorm';
 import { Loan } from './entities/loan.entity';
 import { LoanInstallment } from './entities/loan-installment.entity';
 import { LoanPayment } from './entities/loan-payment.entity';
@@ -20,6 +20,11 @@ import { Customer } from '../customers/entities/customer.entity';
 import { Role } from '../../common/enums/role.enum';
 import { ContactType } from '../customers/enums/contact-type.enum';
 import { MailService } from '../mail/mail.service';
+import {
+  PaginationService,
+  PaginationOptions,
+} from '../../common/services/pagination.service';
+import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
 
 @Injectable()
 export class LoansService {
@@ -33,6 +38,8 @@ export class LoansService {
     @InjectRepository(LoanPayment)
     private readonly paymentRepository: Repository<LoanPayment>,
     private readonly dataSource: DataSource,
+    private readonly paginationService: PaginationService,
+    private readonly mailService: MailService,
   ) {}
 
   /**
@@ -273,31 +280,55 @@ export class LoansService {
   }
 
   /**
-   * Find all loans (for admin)
+   * Find all loans (for admin) with pagination and filtering
    */
-  async findAll(): Promise<Loan[]> {
-    return this.loanRepository.find({
+  async findAll(
+    options: PaginationOptions,
+  ): Promise<PaginatedResponseDto<Loan>> {
+    return this.paginationService.paginate(this.loanRepository, options, {
       relations: ['customer', 'installments'],
-      order: { createdAt: 'DESC' },
+      filterableFields: [
+        'status',
+        'customerId',
+        'principalAmount',
+        'createdAt',
+        'updatedAt',
+      ],
+      searchFields: ['status', 'principalAmount', 'totalAmount'],
     });
   }
 
   /**
-   * Find loans for a customer (excluding simulations)
+   * Find loans for a customer (excluding simulations) with pagination
    */
-  async findByCustomer(customerId: number): Promise<Loan[]> {
-    return this.loanRepository.find({
-      where: {
+  async findByCustomer(
+    customerId: number,
+    options?: PaginationOptions,
+  ): Promise<PaginatedResponseDto<Loan>> {
+    const mergedOptions: PaginationOptions = {
+      ...options,
+      filter: {
+        ...options?.filter,
         customerId,
-        status: In([
-          LoanStatus.ACTIVE,
-          LoanStatus.OVERDUE,
-          LoanStatus.PAID,
-          LoanStatus.DEFAULTED,
-        ]),
+        status: {
+          in: [
+            LoanStatus.ACTIVE,
+            LoanStatus.OVERDUE,
+            LoanStatus.PAID,
+            LoanStatus.DEFAULTED,
+          ],
+        },
       },
+    };
+
+    return this.paginationService.paginate(this.loanRepository, mergedOptions, {
       relations: ['installments'],
-      order: { createdAt: 'DESC' },
+      filterableFields: [
+        'status',
+        'customerId',
+        'principalAmount',
+        'createdAt',
+      ],
     });
   }
 
