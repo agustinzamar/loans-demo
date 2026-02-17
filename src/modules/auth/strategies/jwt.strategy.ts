@@ -34,7 +34,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const tokenRecord = await this.tokenRepository.findOne({
       where: {
         id: payload.tokenId,
-        accessToken: payload.sub.toString(),
         isRevoked: false,
       },
       relations: ['user'],
